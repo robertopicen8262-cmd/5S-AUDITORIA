@@ -1,0 +1,6 @@
+{
+  "name": "Sistema Inteligente de Auditoría 5S",
+  "description": "Plataforma industrial Lean Manufacturing para auditorías 5S, análisis inteligente de bocetos con Gemini IA y control de calidad.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

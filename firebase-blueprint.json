@@ -1,0 +1,174 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil de usuario del sistema de auditoría 5S.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 180 },
+        "role": { "type": "string", "enum": ["admin", "auditor"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email", "role", "createdAt", "updatedAt"]
+    },
+    "Area": {
+      "title": "Area",
+      "description": "Área de trabajo industrial para auditorías 5S.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "code": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "description": { "type": "string", "maxLength": 500 },
+        "supervisor": { "type": "string", "maxLength": 120 },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "name", "code", "description", "supervisor", "active", "createdAt", "updatedAt"]
+    },
+    "Station": {
+      "title": "Station",
+      "description": "Estación o celda operativa perteneciente a un área de trabajo.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "areaId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "areaName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "code": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "line": { "type": "string", "maxLength": 80 },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "areaId", "areaName", "name", "code", "line", "active", "createdAt", "updatedAt"]
+    },
+    "Criterion": {
+      "title": "Criterion",
+      "description": "Criterio de evaluación 5S configurable por pilar.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "pillar": { "type": "string", "enum": ["SEIRI", "SEITON", "SEISO", "SEIKETSU", "SHITSUKE"] },
+        "pillarTitle": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "question": { "type": "string", "minLength": 3, "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 500 },
+        "order": { "type": "integer" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "pillar", "pillarTitle", "question", "description", "order", "active", "createdAt", "updatedAt"]
+    },
+    "Template": {
+      "title": "Template",
+      "description": "Plantilla de formulario generada con IA o configurada en administración.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 600 },
+        "sourceImageName": { "type": "string", "maxLength": 200 },
+        "sourceImageUrl": { "type": "string", "maxLength": 2000 },
+        "schemaVersion": { "type": "string", "maxLength": 20 },
+        "sections": { "type": "array" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "name", "description", "sourceImageName", "sourceImageUrl", "schemaVersion", "sections", "active", "createdAt", "updatedAt"]
+    },
+    "Audit": {
+      "title": "Audit",
+      "description": "Registro completo de auditoría 5S con resultados, observaciones y firmas.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "templateId": { "type": "string", "maxLength": 128 },
+        "templateName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "areaId": { "type": "string", "maxLength": 128 },
+        "areaName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "stationId": { "type": "string", "maxLength": 128 },
+        "stationName": { "type": "string", "maxLength": 120 },
+        "auditorName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "responsibleName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "auditDate": { "type": "string", "minLength": 8, "maxLength": 30 },
+        "shift": { "type": "string", "enum": ["Matutino", "Vespertino", "Nocturno", "Mixto"] },
+        "sections": { "type": "array" },
+        "totalQuestions": { "type": "integer" },
+        "applicableCount": { "type": "integer" },
+        "compliantCount": { "type": "integer" },
+        "nonCompliantCount": { "type": "integer" },
+        "naCount": { "type": "integer" },
+        "scorePercentage": { "type": "number" },
+        "classification": { "type": "string", "enum": ["CONFORME", "OBSERVACIÓN", "NO CONFORME", "NO CALCULABLE"] },
+        "generalObservations": { "type": "string", "maxLength": 1500 },
+        "auditorSignature": { "type": "string", "minLength": 10, "maxLength": 200000 },
+        "responsibleSignature": { "type": "string", "minLength": 10, "maxLength": 200000 },
+        "status": { "type": "string", "enum": ["completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "templateId",
+        "templateName",
+        "areaId",
+        "areaName",
+        "stationId",
+        "stationName",
+        "auditorName",
+        "responsibleName",
+        "auditDate",
+        "shift",
+        "sections",
+        "totalQuestions",
+        "applicableCount",
+        "compliantCount",
+        "nonCompliantCount",
+        "naCount",
+        "classification",
+        "generalObservations",
+        "auditorSignature",
+        "responsibleSignature",
+        "status",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Perfiles de usuario autenticados."
+    },
+    "/areas/{areaId}": {
+      "schema": { "$ref": "#/entities/Area" },
+      "description": "Áreas de trabajo registradas."
+    },
+    "/stations/{stationId}": {
+      "schema": { "$ref": "#/entities/Station" },
+      "description": "Estaciones operativas vinculadas a áreas."
+    },
+    "/criteria/{criterionId}": {
+      "schema": { "$ref": "#/entities/Criterion" },
+      "description": "Criterios de evaluación 5S."
+    },
+    "/templates/{templateId}": {
+      "schema": { "$ref": "#/entities/Template" },
+      "description": "Plantillas de auditoría generadas por IA o personalizadas."
+    },
+    "/audits/{auditId}": {
+      "schema": { "$ref": "#/entities/Audit" },
+      "description": "Auditorías 5S completadas con puntuaciones, observaciones y firmas."
+    }
+  }
+}

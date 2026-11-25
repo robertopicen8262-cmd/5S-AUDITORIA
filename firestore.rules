@@ -1,0 +1,315 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Pilar 0: Red de seguridad global (denegación por defecto)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitivas globales endurecidas
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'robertopicen_8262@cieud.edu.mx';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(ownerId) {
+      return isVerifiedUser() && request.auth.uid == ownerId;
+    }
+
+    function isNumeric(val) {
+      return val is int || val is float;
+    }
+
+    // Validadores de entidad (Blueprints)
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'role', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 180
+        && data.role is string && data.role in ['admin', 'auditor']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidArea(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'name', 'code', 'description', 'supervisor', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'name', 'code', 'description', 'supervisor', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+        && data.code is string && data.code.size() >= 1 && data.code.size() <= 40
+        && data.description is string && data.description.size() <= 500
+        && data.supervisor is string && data.supervisor.size() <= 120
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStation(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'areaId', 'areaName', 'name', 'code', 'line', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'areaId', 'areaName', 'name', 'code', 'line', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && isValidId(data.areaId)
+        && data.areaName is string && data.areaName.size() >= 1 && data.areaName.size() <= 120
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+        && data.code is string && data.code.size() >= 1 && data.code.size() <= 40
+        && data.line is string && data.line.size() <= 80
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCriterion(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'pillar', 'pillarTitle', 'question', 'description', 'order', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'pillar', 'pillarTitle', 'question', 'description', 'order', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.pillar is string && data.pillar in ['SEIRI', 'SEITON', 'SEISO', 'SEIKETSU', 'SHITSUKE']
+        && data.pillarTitle is string && data.pillarTitle.size() >= 2 && data.pillarTitle.size() <= 80
+        && data.question is string && data.question.size() >= 3 && data.question.size() <= 300
+        && data.description is string && data.description.size() <= 500
+        && data.order is int && data.order >= 0 && data.order <= 500
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTemplate(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'name', 'description', 'sourceImageName', 'sourceImageUrl', 'schemaVersion', 'sections', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'name', 'description', 'sourceImageName', 'sourceImageUrl', 'schemaVersion', 'sections', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 160
+        && data.description is string && data.description.size() <= 600
+        && data.sourceImageName is string && data.sourceImageName.size() <= 200
+        && data.sourceImageUrl is string && data.sourceImageUrl.size() <= 2000
+        && data.schemaVersion is string && data.schemaVersion.size() >= 1 && data.schemaVersion.size() <= 20
+        && data.sections is list && data.sections.size() >= 1 && data.sections.size() <= 30
+        && data.sections[0] is map
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAudit(data) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'templateId', 'templateName', 'areaId', 'areaName',
+          'stationId', 'stationName', 'auditorName', 'responsibleName', 'auditDate',
+          'shift', 'sections', 'totalQuestions', 'applicableCount', 'compliantCount',
+          'nonCompliantCount', 'naCount', 'scorePercentage', 'classification',
+          'generalObservations', 'auditorSignature', 'responsibleSignature', 'status', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'templateId', 'templateName', 'areaId', 'areaName',
+          'stationId', 'stationName', 'auditorName', 'responsibleName', 'auditDate',
+          'shift', 'sections', 'totalQuestions', 'applicableCount', 'compliantCount',
+          'nonCompliantCount', 'naCount', 'scorePercentage', 'classification',
+          'generalObservations', 'auditorSignature', 'responsibleSignature', 'status', 'createdAt'
+        ])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.templateId is string && data.templateId.size() >= 1 && data.templateId.size() <= 128
+        && data.templateName is string && data.templateName.size() >= 1 && data.templateName.size() <= 160
+        && data.areaId is string && data.areaId.size() <= 128
+        && data.areaName is string && data.areaName.size() >= 1 && data.areaName.size() <= 120
+        && data.stationId is string && data.stationId.size() <= 128
+        && data.stationName is string && data.stationName.size() <= 120
+        && data.auditorName is string && data.auditorName.size() >= 2 && data.auditorName.size() <= 120
+        && data.responsibleName is string && data.responsibleName.size() >= 2 && data.responsibleName.size() <= 120
+        && data.auditDate is string && data.auditDate.size() >= 8 && data.auditDate.size() <= 30
+        && data.shift is string && data.shift in ['Matutino', 'Vespertino', 'Nocturno', 'Mixto']
+        && data.sections is list && data.sections.size() >= 1 && data.sections.size() <= 30
+        && data.sections[0] is map
+        && data.totalQuestions is int && data.totalQuestions >= 0 && data.totalQuestions <= 500
+        && data.applicableCount is int && data.applicableCount >= 0 && data.applicableCount <= 500
+        && data.compliantCount is int && data.compliantCount >= 0 && data.compliantCount <= 500
+        && data.nonCompliantCount is int && data.nonCompliantCount >= 0 && data.nonCompliantCount <= 500
+        && data.naCount is int && data.naCount >= 0 && data.naCount <= 500
+        && (data.scorePercentage == null || (isNumeric(data.scorePercentage) && data.scorePercentage >= 0 && data.scorePercentage <= 100))
+        && data.classification is string && data.classification in ['CONFORME', 'OBSERVACIÓN', 'NO CONFORME', 'NO CALCULABLE']
+        && data.generalObservations is string && data.generalObservations.size() <= 1500
+        && data.auditorSignature is string && data.auditorSignature.size() >= 10 && data.auditorSignature.size() <= 200000
+        && data.responsibleSignature is string && data.responsibleSignature.size() >= 10 && data.responsibleSignature.size() <= 200000
+        && data.status is string && data.status == 'completed'
+        && data.createdAt is timestamp;
+    }
+
+    // Colección de administradores explícitos
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && isVerifiedUser() && (request.auth.uid == adminId || isBootstrappedAdmin());
+      allow list: if false;
+      allow create, update, delete: if isBootstrappedAdmin();
+    }
+
+    // Perfiles de usuario (Aislamiento de PII)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isVerifiedUser() && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && existing().uid == request.auth.uid);
+      allow create: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidUserProfile(incoming())
+        && incoming().uid == request.auth.uid
+        && userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().role == 'auditor' || isBootstrappedAdmin());
+      allow update: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt'])) ||
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'updatedAt']))
+        );
+      allow delete: if isValidId(userId) && isVerifiedUser() && isAdmin();
+    }
+
+    // Áreas de trabajo
+    match /areas/{areaId} {
+      allow get: if isValidId(areaId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && existing().ownerId == request.auth.uid);
+      allow create: if isValidId(areaId)
+        && isVerifiedUser()
+        && isValidArea(incoming())
+        && incoming().id == areaId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(areaId)
+        && isVerifiedUser()
+        && isValidArea(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'code', 'description', 'supervisor', 'active', 'updatedAt'])
+        && (isOwner(existing().ownerId) || isAdmin());
+      allow delete: if isValidId(areaId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    // Estaciones de trabajo
+    match /stations/{stationId} {
+      allow get: if isValidId(stationId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && existing().ownerId == request.auth.uid);
+      allow create: if isValidId(stationId)
+        && isVerifiedUser()
+        && isValidStation(incoming())
+        && incoming().id == stationId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/areas/$(incoming().areaId))
+        && (
+          get(/databases/$(database)/documents/areas/$(incoming().areaId)).data.ownerId == request.auth.uid ||
+          isAdmin()
+        );
+      allow update: if isValidId(stationId)
+        && isVerifiedUser()
+        && isValidStation(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['areaId', 'areaName', 'name', 'code', 'line', 'active', 'updatedAt'])
+        && (isOwner(existing().ownerId) || isAdmin());
+      allow delete: if isValidId(stationId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    // Criterios de evaluación 5S
+    match /criteria/{criterionId} {
+      allow get: if isValidId(criterionId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && existing().ownerId == request.auth.uid);
+      allow create: if isValidId(criterionId)
+        && isVerifiedUser()
+        && isValidCriterion(incoming())
+        && incoming().id == criterionId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(criterionId)
+        && isVerifiedUser()
+        && isValidCriterion(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['pillar', 'pillarTitle', 'question', 'description', 'order', 'active', 'updatedAt'])
+        && (isOwner(existing().ownerId) || isAdmin());
+      allow delete: if isValidId(criterionId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    // Plantillas de formulario (generadas con IA o personalizadas)
+    match /templates/{templateId} {
+      allow get: if isValidId(templateId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && existing().ownerId == request.auth.uid);
+      allow create: if isValidId(templateId)
+        && isVerifiedUser()
+        && isValidTemplate(incoming())
+        && incoming().id == templateId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(templateId)
+        && isVerifiedUser()
+        && isValidTemplate(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'sections', 'active', 'updatedAt'])
+        && (isOwner(existing().ownerId) || isAdmin());
+      allow delete: if isValidId(templateId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    // Auditorías 5S completadas (bloqueo de estado terminal)
+    match /audits/{auditId} {
+      allow get: if isValidId(auditId) && isVerifiedUser() && (isOwner(existing().ownerId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && existing().ownerId == request.auth.uid);
+      allow create: if isValidId(auditId)
+        && isVerifiedUser()
+        && isValidAudit(incoming())
+        && incoming().id == auditId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(auditId)
+        && isVerifiedUser()
+        && isValidAudit(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['generalObservations', 'classification', 'status'])
+        && isAdmin();
+      allow delete: if isValidId(auditId) && isVerifiedUser() && isAdmin();
+    }
+  }
+}
